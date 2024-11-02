@@ -1,7 +1,13 @@
 package main
 
-import "fmt"
+import (
+	"cardsgame/deck"
+	"fmt"
+)
 
 func main() {
-	fmt.Println("Hello World")
+	playDeck := deck.NewDeckFromFile("test2")
+	for _, card := range playDeck {
+		fmt.Println(card)
+	}
 }

@@ -2,12 +2,11 @@ package main
 
 import (
 	"cardsgame/deck"
-	"fmt"
 )
 
 func main() {
-	playDeck := deck.NewDeckFromFile("test2")
-	for _, card := range playDeck {
-		fmt.Println(card)
-	}
+	var playDeck deck.Deck
+	playDeck.Create()
+	playDeck.Print()
+	deck.QueueDeck.Print()
 }

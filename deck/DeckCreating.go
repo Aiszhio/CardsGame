@@ -1,21 +1,35 @@
 package deck
 
-type Deck []string
+type Suit string
 
-var suits = []string{"Spades", "Hearts", "Diamonds", "Clubs"}
-var ranks = []string{"Ace", "King", "Queen", "Jack", "Ten", "Nine", "Eight", "Seven", "Six"}
+type Rank string
 
-var QueueDeck Deck
+type Card struct {
+	Rank Rank
+	Suit Suit
+}
 
-func (d *Deck) Create() Deck {
-	var playDeck Deck
+type Currents struct {
+	Cards []Card
+}
+
+type Queue struct {
+	Cards []Card
+}
+
+type Deck struct {
+	Cards []Card
+	Currents
+	Queue
+}
+
+var suits = []Suit{"Spades", "Hearts", "Diamonds", "Clubs"}
+var ranks = []Rank{"Ace", "King", "Queen", "Jack", "Ten", "Nine", "Eight", "Seven", "Six"}
+
+func (d *Deck) Create() {
 	for _, suit := range suits {
 		for _, rank := range ranks {
-			playDeck = append(playDeck, rank+" of "+suit)
+			(*d).Cards = append((*d).Cards, Card{rank, suit})
 		}
 	}
-	playDeck.Shuffle()
-	*d = playDeck[:8]
-	QueueDeck = playDeck[8:]
-	return *d
 }

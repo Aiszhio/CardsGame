@@ -7,6 +7,7 @@ import (
 func main() {
 	var playDeck deck.Deck
 	playDeck.Create()
-	playDeck.Print()
-	deck.QueueDeck.Print()
+	playDeck.ShuffleAndTake()
+	playDeck.Currents.Print()
+	playDeck.Queue.Print()
 }

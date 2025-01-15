@@ -5,12 +5,12 @@ import (
 	"time"
 )
 
-func (d *Deck) ShuffleAndTake() {
+func (deck *Deck) ShuffleAndTake() {
 	rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < len((*d).Cards); i++ {
-		temp := rand.Intn(len((*d).Cards) - i)
-		(*d).Cards[i], (*d).Cards[temp] = (*d).Cards[temp], (*d).Cards[i]
+	for i := 0; i < len((*deck).Queue.Cards); i++ {
+		temp := rand.Intn(len((*deck).Queue.Cards) - i)
+		(*deck).Queue.Cards[i], (*deck).Queue.Cards[temp] = (*deck).Queue.Cards[temp], (*deck).Queue.Cards[i]
 	}
-	(*d).Currents.Cards = (*d).Cards[:8]
-	(*d).Queue.Cards = (*d).Cards[8:]
+	(*deck).Currents.Cards = (*deck).Queue.Cards[:8]
+	(*deck).Queue.Cards = (*deck).Queue.Cards[8:]
 }

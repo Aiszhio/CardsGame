@@ -9,5 +9,9 @@ func main() {
 	playDeck.Create()
 	playDeck.ShuffleAndTake()
 	playDeck.Currents.Print()
-	playDeck.Queue.Print()
+	err := deck.SaveToFile("aboba", playDeck.Currents)
+	if err != nil {
+		panic(err)
+	}
+	_ = deck.NewDeckFromFile("aboba")
 }

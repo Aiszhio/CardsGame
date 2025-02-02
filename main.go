@@ -17,13 +17,15 @@ func main() {
 	}))
 
 	router.LoadHTMLGlob("template/*")
-	router.Static("/static", "static")
+	router.Static("/static", "./static")
 
 	router.Group("/")
 	{
 		router.GET("/home", handlers.GetHome)
 		router.POST("/api/deck/create", handlers.CreateDeck)
 		router.GET("/api/ws/:id", handlers.WebSocketHandler)
+		router.POST("/api/deck/take", handlers.TakeCards)
+		router.POST("/api/deck/leave", handlers.LeaveCards)
 	}
 
 	err := router.Run(":8080")

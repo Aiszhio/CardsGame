@@ -18,32 +18,61 @@ h1, h2 {
     color: #333;
 }
 
-.controls {
+.controls, .action-buttons {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     margin-bottom: 20px;
 }
 
-.controls button, .controls input[type="file"] {
+.controls button,
+.action-buttons button,
+.controls input[type="file"] {
     margin: 5px;
     padding: 10px 15px;
     font-size: 16px;
     cursor: pointer;
 }
 
-.deck-section, .hand-section {
-    margin-bottom: 20px;
-}
-
-ul {
+.table-section ul {
     list-style-type: none;
     padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
-li {
+.table-section li {
     background-color: #e2e8f0;
-    margin: 5px 0;
+    margin: 5px;
     padding: 10px;
     border-radius: 5px;
+}
+
+.hand-section ul {
+    list-style-type: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;      
+    justify-content: center;
+    gap: 10px;
+}
+
+.hand-section li {
+    background-color: #e2e8f0;
+    margin: 5px;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    min-width: 100px;
+    text-align: center;
+}
+
+.hand-section li.selected {
+    border: 2px solid blue;
+}
+
+.card-image {
+    width: 100px;
+    height: auto;
 }

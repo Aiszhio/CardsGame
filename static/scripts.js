@@ -1,168 +1,221 @@
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", () => {
     const createDeckBtn = document.getElementById("create-deck");
-    const uploadDeckInput = document.getElementById("upload-deck");
     const saveDeckBtn = document.getElementById("save-deck");
+    const drawCardBtn = document.getElementById("draw-card");
+    const discardCardBtn = document.getElementById("discard-card");
 
-    const deckList = document.getElementById("deck-list");
+    const tableList = document.getElementById("table-list");
     const handList = document.getElementById("hand-list");
-    const deckCount = document.getElementById("deck-count");
+
+    const sessionId = Date.now();
+    console.log("Session ID:", sessionId);
 
     let socket;
-    let id;
 
-    // Генерация sessionId
-    function generateSessionId() {
-        return Date.now(); // Генерация sessionId на основе времени (можно добавить случайные символы, если нужно)
-    }
-
-    console.log(generateSessionId());
-
-    // Инициализация WebSocket
     function initWebSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const socketUrl = `${protocol}://${window.location.host}/api/ws/${id}`;
-
-        console.log("Попытка подключиться к WebSocket:", socketUrl);
+        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const socketUrl = `${protocol}://${window.location.host}/api/ws/${sessionId}`;
+        console.log("Подключаемся к WebSocket:", socketUrl);
 
         socket = new WebSocket(socketUrl);
 
-        // Обработчик на открытие соединения
-        socket.onopen = function() {
-            console.log("WebSocket соединение установлено для сессии:", id);
+        socket.onopen = () => {
+            console.log("WebSocket соединение установлено для сессии:", sessionId);
         };
 
-        // Обработчик на получение сообщения
-        socket.onmessage = function(event) {
+        socket.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                console.log("Получено сообщение:", data);
-                if (data.deck) updateDeckUI(data.deck);
-                if (data.hand) updateHandUI(data.hand);
-            } catch (e) {
-                console.error("Ошибка парсинга JSON:", e, "Полученные данные:", event.data);
+                if (data.queue) updateTableUI(data.queue);
+                if (data.deck) updateHandUI(data.deck);
+            } catch (error) {
+                console.error("Ошибка парсинга JSON:", error);
             }
         };
 
-        // Обработчик на закрытие соединения
-        socket.onclose = function() {
+        socket.onclose = () => {
             console.log("WebSocket соединение закрыто");
         };
 
-        // Обработчик на ошибку соединения
-        socket.onerror = function(event) {
-            console.error("WebSocket ошибка:", event);
-            console.log("Ошибка в соединении с WebSocket по адресу:", socket.url);
+        socket.onerror = (error) => {
+            console.error("WebSocket ошибка:", error);
         };
     }
 
-    createDeckBtn.addEventListener("click", function() {
-        // 1. Генерация sessionId
-        id = generateSessionId();
+    initWebSocket();
 
-        // 2. Отправка запроса на сервер для создания колоды
-        fetch(`/api/deck/create?session=${id}`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-Session-ID": id
+    function updateTableUI(cards) {
+        tableList.innerHTML = "";
+        cards.forEach((card) => {
+            let rank, suit;
+            if (typeof card === "string") {
+                const parts = card.split(" of ");
+                rank = parts[0] ? parts[0].trim() : "";
+                suit = parts[1] ? parts[1].trim() : "";
+            } else {
+                rank = card.Rank;
+                suit = card.Suit;
             }
-        })
-            .then(response => {
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                return response.json();
-            })
-            .then(data => {
-                if (data.deck) {
-                    // 3. После успешного ответа инициализируем WebSocket
-                    initWebSocket();
-                    alert("Игра начата!");
-                    updateDeckUI(data.deck);
-                }
-            })
-            .catch(error => {
-                console.error("Ошибка:", error);
-                alert("Ошибка: " + error.message);
-            });
-    });
-
-    // Обработчик на загрузку колоды из файла
-    uploadDeckInput.addEventListener("change", function() {
-        const file = this.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const content = e.target.result;
-                fetch("/upload", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ deck: content })
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.deck) {
-                            alert("Колода успешно загружена!");
-                            updateDeckUI(data.deck); // Обновление UI колоды
-                            updateHandUI(data.hand); // Обновление UI руки
-                        } else {
-                            alert("Ошибка загрузки колоды: " + data.message);
-                        }
-                    })
-                    .catch(error => console.error("Ошибка:", error));
-            };
-            reader.readAsText(file); // Чтение содержимого файла
-        }
-    });
-
-    // Обработчик на сохранение колоды
-    saveDeckBtn.addEventListener("click", function() {
-        fetch("/save", {
-            method: "GET"
-        })
-            .then(response => {
-                if (response.ok) {
-                    return response.blob(); // Сохранение колоды в виде файла
-                } else {
-                    throw new Error("Ошибка сохранения колоды");
-                }
-            })
-            .then(blob => {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "deck.json"; // Имя файла для сохранения
-                document.body.appendChild(a);
-                a.click(); // Имитируем клик для загрузки
-                a.remove();
-                URL.revokeObjectURL(url); // Освобождение ресурсов
-            })
-            .catch(error => {
-                console.error("Ошибка:", error);
-                alert("Ошибка сохранения колоды: " + error.message);
-            });
-    });
-
-    // Функция для обновления UI колоды
-    function updateDeckUI(deck) {
-        deckList.innerHTML = ""; // Очищаем текущую колоду на странице
-        deck.forEach(card => {
             const li = document.createElement("li");
-            li.textContent = `${card.Rank} of ${card.Suit}`;
-            deckList.appendChild(li);
+            li.textContent = rank && suit ? `${rank} of ${suit}` : card;
+            tableList.appendChild(li);
         });
-
-        // Обновляем количество карт в колоде
-        deckCount.textContent = `Оставшиеся карты: ${deck.length}`;
     }
 
-    // Функция для обновления UI руки
-    function updateHandUI(hand) {
-        handList.innerHTML = ""; // Очищаем текущую руку на странице
-        hand.forEach(card => {
+    function updateHandUI(cards) {
+        handList.innerHTML = "";
+        cards.forEach((card, index) => {
+            let rank, suit;
+            if (typeof card === "string") {
+                const parts = card.split(" of ");
+                rank = parts[0] ? parts[0].trim() : "";
+                suit = parts[1] ? parts[1].trim() : "";
+            } else {
+                rank = card.Rank;
+                suit = card.Suit;
+            }
+
+            if (!rank || !suit) return;
+
             const li = document.createElement("li");
-            li.textContent = `${card.Rank} of ${card.Suit}`;
+            li.dataset.index = index;
+
+            const fileName = `${rank} of ${suit}.png`;
+            const img = document.createElement("img");
+            img.src = `./static/images/${fileName}`;
+            img.alt = `${rank} of ${suit}`;
+            img.classList.add("card-image");
+
+            li.appendChild(img);
+
+            li.addEventListener("click", function () {
+                this.classList.toggle("selected");
+            });
+
             handList.appendChild(li);
         });
     }
+
+    createDeckBtn.addEventListener("click", async () => {
+        try {
+            const response = await fetch("/api/deck/create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Session-ID": sessionId,
+                },
+            });
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+            const data = await response.json();
+            updateHandUI(data.deck || []);
+            updateTableUI(data.queue || []);
+            console.log("Колода создана");
+        } catch (error) {
+            console.error("Ошибка при создании колоды:", error);
+        }
+    });
+
+    saveDeckBtn.addEventListener("click", () => {
+        let content = "Стол:\n";
+        tableList.querySelectorAll("li").forEach((li) => {
+            content += li.textContent + "\n";
+        });
+        content += "\nВаша Рука:\n";
+        handList.querySelectorAll("li").forEach((li) => {
+            const img = li.querySelector("img");
+            content += img ? img.alt : li.textContent;
+            content += "\n";
+        });
+
+        const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "deck.txt";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    drawCardBtn.addEventListener("click", async () => {
+        const handCards = Array.from(handList.querySelectorAll("li")).map(li => {
+            const img = li.querySelector("img");
+            return img ? img.alt : li.textContent;
+        });
+
+        const tableCards = Array.from(tableList.querySelectorAll("li")).map(li => li.textContent);
+
+        const selectedCards = Array.from(handList.querySelectorAll("li.selected")).map(li => {
+            const img = li.querySelector("img");
+            return img ? img.alt : li.textContent;
+        });
+
+        if (selectedCards.length === 0) {
+            alert("Выберите карту(ы) для выбрасывания.");
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/deck/leave", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Session-ID": sessionId,
+                },
+                body: JSON.stringify({
+                    hand: handCards,
+                    table: tableCards,
+                    selected: selectedCards
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("Получены данные от сервера:", data);
+
+            updateHandUI(data.deck || []);
+            updateTableUI(data.queue || []);
+            console.log("Карта выброшена, состояние обновлено");
+        } catch (error) {
+            console.error("Ошибка при выбрасывании карты:", error);
+        }
+    });
+
+    discardCardBtn.addEventListener("click", async () => {
+        const handCards = Array.from(handList.querySelectorAll("li")).map(li => {
+            const img = li.querySelector("img");
+            return img ? img.alt : li.textContent;
+        });
+
+        const tableCards = Array.from(tableList.querySelectorAll("li")).map(li => li.textContent);
+
+        try {
+            const response = await fetch("/api/deck/take", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Session-ID": sessionId,
+                },
+                body: JSON.stringify({
+                    hand: handCards,
+                    table: tableCards
+                })
+            });
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+            const data = await response.json();
+            updateHandUI(data.deck || []);
+            updateTableUI(data.queue || []);
+            console.log("Карта взята, состояние обновлено");
+        } catch (error) {
+            console.error("Ошибка при взятии карты:", error);
+        }
+    });
 });

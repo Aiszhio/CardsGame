@@ -26,7 +26,6 @@ func WebSocketHandler(c *gin.Context) {
 	log.Println("Попытка подключения WebSocket")
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Printf("Ошибка при обновлении соединения: %v", err) // Добавлено логирование
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}

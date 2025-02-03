@@ -18,6 +18,7 @@ h1, h2 {
     color: #333;
 }
 
+/* Общие стили для контролов и кнопок */
 .controls, .action-buttons {
     display: flex;
     flex-wrap: wrap;
@@ -34,12 +35,14 @@ h1, h2 {
     cursor: pointer;
 }
 
+/* Секция "Стол" */
 .table-section ul {
     list-style-type: none;
     padding: 0;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    gap: 10px;
 }
 
 .table-section li {
@@ -47,20 +50,21 @@ h1, h2 {
     margin: 5px;
     padding: 10px;
     border-radius: 5px;
+    text-align: center;
 }
 
+/* Секция "Ваша Рука" */
 .hand-section ul {
     list-style-type: none;
     padding: 0;
     display: flex;
-    flex-wrap: wrap;      
+    flex-wrap: wrap;
     justify-content: center;
     gap: 10px;
 }
 
 .hand-section li {
     background-color: #e2e8f0;
-    margin: 5px;
     padding: 10px;
     border-radius: 5px;
     cursor: pointer;
@@ -71,8 +75,50 @@ h1, h2 {
 .hand-section li.selected {
     border: 2px solid blue;
 }
+/* Секция "Рука ИИ" */
+.ai-hand-section {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #fafafa;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    text-align: center;
+}
 
+/* Контейнер для карт ИИ */
+#ai-hand-list {
+    list-style-type: none;
+    padding: 0;
+    display: flex;
+    flex-direction: row;  /* Элементы располагаются в ряд */
+    flex-wrap: wrap;      /* Если их много, они переносятся на следующую строку */
+    justify-content: center;
+    gap: 10px;
+}
+
+/* Элементы для карт ИИ */
+#ai-hand-list li {
+    background-color: #f7f7f7;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    text-align: center;
+    min-width: 100px;
+}
+
+/* Стили для изображений карт */
 .card-image {
     width: 100px;
     height: auto;
+    display: block;
+    margin: auto;
+}
+
+/* Стили для кнопки переключения показа карт ИИ */
+#toggle-ai-cards {
+    display: block;
+    margin: 10px auto;
+    padding: 8px 12px;
+    font-size: 16px;
+    cursor: pointer;
 }

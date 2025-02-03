@@ -19,9 +19,14 @@ type Queue struct {
 	Cards []Card
 }
 
+type Table struct {
+	Cards []Card
+}
+
 type Deck struct {
 	Currents
 	Queue
+	Table
 }
 
 var Suits = []string{"Spades", "Hearts", "Diamonds", "Clubs"}
@@ -29,24 +34,18 @@ var Ranks = []string{"Ace", "King", "Queen", "Jack", "Ten", "Nine", "Eight", "Se
 
 func CreateDeck(c *gin.Context) {
 	var deck Deck
+	var deckAI Deck
 
 	deck.Create()
 
 	deck.Shuffle()
 
-	var currentCards, queueCards []string
-
-	for i := 0; i < len(deck.Currents.Cards); i++ {
-		currentCards = append(currentCards, deck.Currents.Cards[i].Rank+deck.Currents.Cards[i].Suit)
-	}
-
-	for i := 0; i < len(deck.Queue.Cards); i++ {
-		queueCards = append(queueCards, deck.Queue.Cards[i].Rank+deck.Queue.Cards[i].Suit)
-	}
+	CardsDistribution(&deck, &deckAI)
 
 	c.JSON(200, gin.H{
-		"deck":  deck.Currents.Cards,
-		"queue": deck.Queue.Cards,
+		"deck":   deck.Currents.Cards,
+		"deckAI": deckAI.Currents.Cards,
+		"queue":  deck.Queue.Cards,
 	})
 }
 
@@ -61,9 +60,14 @@ func (deck *Deck) Create() {
 func (deck *Deck) Shuffle() {
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < len((*deck).Queue.Cards); i++ {
-		temp := rand.Intn(len((*deck).Queue.Cards) - i)
+		temp := rand.Intn(len((*deck).Queue.Cards))
 		(*deck).Queue.Cards[i], (*deck).Queue.Cards[temp] = (*deck).Queue.Cards[temp], (*deck).Queue.Cards[i]
 	}
-	(*deck).Currents.Cards = (*deck).Queue.Cards[:8]
-	(*deck).Queue.Cards = (*deck).Queue.Cards[8:]
+}
+
+func CardsDistribution(player, AI *Deck) {
+	player.Currents.Cards = player.Queue.Cards[:8]
+	player.Queue.Cards = player.Queue.Cards[8:]
+	AI.Currents.Cards = player.Queue.Cards[:8]
+	player.Queue.Cards = player.Queue.Cards[8:]
 }

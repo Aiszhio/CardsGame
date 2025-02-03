@@ -11,7 +11,7 @@
 
     <div class="controls">
         <button id="create-deck">Начать игру</button>
-        <input type="file" id="upload-deck" accept=".json">
+        <input type="file" id="load-deck" accept=".txt">
         <button id="save-deck">Сохранить Колоду</button>
     </div>
 
@@ -28,6 +28,12 @@
     <div class="hand-section">
         <h2>Ваша Рука</h2>
         <ul id="hand-list"></ul>
+    </div>
+
+    <div class="ai-hand-section">
+        <h2>Рука ИИ</h2>
+        <button id="toggle-ai-cards">Показать карты ИИ</button>
+        <ul id="ai-hand-list"></ul>
     </div>
 </div>
 

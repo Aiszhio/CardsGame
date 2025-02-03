@@ -14,8 +14,9 @@ type RequestData struct {
 }
 
 type ResponseData struct {
-	Deck  []string `json:"deck"`
-	Queue []string `json:"queue"`
+	Deck        []string `json:"deck"`
+	Queue       []string `json:"queue"`
+	GamingTable []string `json:"table"`
 }
 
 func TakeCards(c *gin.Context) {
@@ -84,8 +85,9 @@ func LeaveCards(c *gin.Context) {
 		cards = append(cards, trimmed)
 	}
 
-	for i := 0; i < len(cards)-1; i++ {
+	for i := 0; i < len(cards)-1; i += 2 {
 		if cards[i] == cards[i+1] {
+			resp.GamingTable = append(resp.GamingTable, cards[i], cards[i+1])
 			continue
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Карты должны быть одной величины!"})
@@ -94,7 +96,8 @@ func LeaveCards(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"deck":  resp.Deck,
-		"queue": resp.Queue,
+		"deck":        resp.Deck,
+		"gamingTable": resp.GamingTable,
+		"queue":       resp.Queue,
 	})
 }

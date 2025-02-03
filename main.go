@@ -26,6 +26,7 @@ func main() {
 		router.GET("/api/ws/:id", handlers.WebSocketHandler)
 		router.POST("/api/deck/take", handlers.TakeCards)
 		router.POST("/api/deck/leave", handlers.LeaveCards)
+		router.POST("/api/deck/ai", handlers.AIResponse)
 	}
 
 	err := router.Run(":8080")

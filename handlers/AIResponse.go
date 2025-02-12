@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
@@ -14,6 +13,7 @@ type UserRequest struct {
 
 type ResponseToUser struct {
 	SelectedAI []string `json:"selectedAI"`
+	HandAI     []string `json:"handAI"`
 }
 
 func AIResponse(c *gin.Context) {
@@ -24,16 +24,20 @@ func AIResponse(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 
-	fmt.Println("req", req)
-
 	strongerCards := req.CompareCards()
 
-	cardsToResponse := ThrowCards(strongerCards, req.HandAI)
+	var resp ResponseToUser
 
-	fmt.Println("after throwing")
-
-	resp := ResponseToUser{
-		SelectedAI: cardsToResponse,
+	if len(strongerCards) == 0 {
+		resp = ResponseToUser{
+			SelectedAI: nil,
+			HandAI:     append(req.HandAI, req.Selected...),
+		}
+	} else {
+		resp = ResponseToUser{
+			SelectedAI: strongerCards,
+			HandAI:     ThrowCards(strongerCards, req.HandAI),
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": resp})
@@ -45,7 +49,6 @@ func (request *UserRequest) CompareCards() []string {
 
 	for i := 0; i < len(request.Selected); i++ {
 		for j := 0; j < len(request.HandAI); j++ {
-			fmt.Println("Splitting", strings.Split(request.Selected[i], " ")[2], strings.Split(request.HandAI[j], " ")[2])
 			result := func() bool {
 				if strings.Split(request.Selected[i], " ")[2] == strings.Split(request.HandAI[j], " ")[2] {
 					return true
@@ -54,10 +57,7 @@ func (request *UserRequest) CompareCards() []string {
 				}
 			}
 
-			fmt.Println("result", result())
-
 			if result() == true && FindRank(strings.Split(request.Selected[i], " ")[0]) < FindRank(strings.Split(request.HandAI[j], " ")[0]) {
-				fmt.Println("Ranking", FindRank(strings.Split(request.Selected[i], " ")[0]), FindRank(strings.Split(request.HandAI[j], " ")[0]))
 				strongerCards = append(strongerCards, request.HandAI[j])
 			}
 		}
@@ -66,8 +66,6 @@ func (request *UserRequest) CompareCards() []string {
 	if len(strongerCards) == 0 {
 		return nil
 	}
-
-	fmt.Println(len(strongerCards))
 
 	return strongerCards
 }

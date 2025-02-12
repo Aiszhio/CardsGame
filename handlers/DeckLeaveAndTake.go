@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
@@ -39,12 +38,11 @@ func TakeCards(c *gin.Context) {
 		Queue: data.Table,
 	}
 
-	fmt.Println(len(resp.Deck), len(resp.Queue), 8-len(resp.Deck))
-
-	for i := 0; i < 8-len(resp.Deck); i++ {
-		resp.Deck = append(resp.Deck, resp.Queue[i])
-		resp.Queue = append(resp.Queue[:i], resp.Queue[i+1:]...)
-		fmt.Println(resp.Deck, resp.Queue)
+	numToTake := 8 - len(resp.Deck)
+	for i := 0; i < numToTake && len(resp.Queue) > 0; i++ {
+		card := resp.Queue[0]
+		resp.Deck = append(resp.Deck, card)
+		resp.Queue = resp.Queue[1:]
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -52,7 +50,6 @@ func TakeCards(c *gin.Context) {
 		"queue": resp.Queue,
 	})
 }
-
 func LeaveCards(c *gin.Context) {
 	var req RequestData
 
@@ -67,33 +64,43 @@ func LeaveCards(c *gin.Context) {
 		return
 	}
 
-	cards := make([]string, 0, len(req.Selected))
-
 	resp := ResponseData{Deck: req.Hand, Queue: req.Table}
 
+	var differentCards []string
+
 	for _, selCard := range req.Selected {
-		for i, card := range req.Hand {
+		for _, card := range req.Hand {
 			if selCard == card {
-				resp.Deck = append(resp.Deck[:i], resp.Deck[i+1:]...)
+				differentCards = append(differentCards, card)
 				break
 			}
 		}
 	}
 
-	for _, card := range req.Selected {
-		trimmed := strings.TrimSpace(strings.Split(card, " ")[0])
-		cards = append(cards, trimmed)
-	}
-
-	for i := 0; i < len(cards)-1; i += 2 {
-		if cards[i] == cards[i+1] {
-			resp.GamingTable = append(resp.GamingTable, cards[i], cards[i+1])
+	for i := 0; i < len(differentCards)-1; i += 2 {
+		if strings.TrimSpace(strings.Split(differentCards[i], " ")[0]) == strings.TrimSpace(strings.Split(differentCards[i+1], " ")[0]) {
+			resp.GamingTable = append(resp.GamingTable, differentCards[i], differentCards[i+1])
 			continue
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Карты должны быть одной величины!"})
 			return
 		}
 	}
+
+	remainingCards := []string{}
+	for _, card := range req.Hand {
+		found := false
+		for _, selectedCard := range differentCards {
+			if card == selectedCard {
+				found = true
+				break
+			}
+		}
+		if !found {
+			remainingCards = append(remainingCards, card)
+		}
+	}
+	resp.Deck = remainingCards
 
 	c.JSON(http.StatusOK, gin.H{
 		"deck":        resp.Deck,

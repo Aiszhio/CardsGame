@@ -18,38 +18,6 @@ type ResponseData struct {
 	GamingTable []string `json:"table"`
 }
 
-func TakeCards(c *gin.Context) {
-	var data RequestData
-
-	err := c.ShouldBindJSON(&data)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if len(data.Hand) == 8 {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "У вас слишком много карт"})
-	} else if len(data.Table) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "На столе больше нет карт"})
-	}
-
-	resp := ResponseData{
-		Deck:  data.Hand,
-		Queue: data.Table,
-	}
-
-	numToTake := 8 - len(resp.Deck)
-	for i := 0; i < numToTake && len(resp.Queue) > 0; i++ {
-		card := resp.Queue[0]
-		resp.Deck = append(resp.Deck, card)
-		resp.Queue = resp.Queue[1:]
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"deck":  resp.Deck,
-		"queue": resp.Queue,
-	})
-}
 func LeaveCards(c *gin.Context) {
 	var req RequestData
 

@@ -24,9 +24,11 @@ func main() {
 		router.GET("/home", handlers.GetHome)
 		router.POST("/api/deck/create", handlers.CreateDeck)
 		router.GET("/api/ws/:id", handlers.WebSocketHandler)
-		router.POST("/api/deck/take", handlers.TakeCards)
 		router.POST("/api/deck/leave", handlers.LeaveCards)
 		router.POST("/api/deck/ai", handlers.AIResponse)
+		router.POST("/api/deck/status", handlers.WatchStatus)
+		router.POST("/api/deck/save", handlers.SaveGameState)
+		router.GET("/api/deck/load", handlers.LoadDeckFromFileHandler)
 	}
 
 	err := router.Run(":8080")

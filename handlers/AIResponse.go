@@ -22,13 +22,14 @@ func AIResponse(c *gin.Context) {
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	strongerCards := req.CompareCards()
 
 	var resp ResponseToUser
 
-	if len(strongerCards) == 0 {
+	if len(strongerCards) == 0 || len(strongerCards) != len(req.Selected) {
 		resp = ResponseToUser{
 			SelectedAI: nil,
 			HandAI:     append(req.HandAI, req.Selected...),
@@ -36,7 +37,7 @@ func AIResponse(c *gin.Context) {
 	} else {
 		resp = ResponseToUser{
 			SelectedAI: strongerCards,
-			HandAI:     ThrowCards(strongerCards, req.HandAI),
+			HandAI:     RemoveCards(strongerCards, req.HandAI),
 		}
 	}
 
@@ -44,34 +45,69 @@ func AIResponse(c *gin.Context) {
 }
 
 func (request *UserRequest) CompareCards() []string {
+	var selectedCandidates []string
 
-	var strongerCards []string
+	remainingHand := make([]string, len(request.HandAI))
+	copy(remainingHand, request.HandAI)
 
-	for i := 0; i < len(request.Selected); i++ {
-		for j := 0; j < len(request.HandAI); j++ {
-			result := func() bool {
-				if strings.Split(request.Selected[i], " ")[2] == strings.Split(request.HandAI[j], " ")[2] {
-					return true
-				} else {
-					return false
+	for _, userCard := range request.Selected {
+		userParts := strings.Split(userCard, " ")
+		if len(userParts) < 3 {
+			continue
+		}
+		userRank := FindRank(userParts[0])
+		userSuit := userParts[2]
+
+		var bestCandidate string
+		var bestCandidateIndex int = -1
+		var bestCandidateRank int
+
+		for i, aiCard := range remainingHand {
+			aiParts := strings.Split(aiCard, " ")
+			if len(aiParts) < 3 {
+				continue
+			}
+			aiRank := FindRank(aiParts[0])
+			aiSuit := aiParts[2]
+
+			if aiSuit == userSuit && aiRank > userRank {
+				if bestCandidate == "" || aiRank < bestCandidateRank {
+					bestCandidate = aiCard
+					bestCandidateRank = aiRank
+					bestCandidateIndex = i
 				}
 			}
+		}
 
-			if result() == true && FindRank(strings.Split(request.Selected[i], " ")[0]) < FindRank(strings.Split(request.HandAI[j], " ")[0]) {
-				strongerCards = append(strongerCards, request.HandAI[j])
-			}
+		if bestCandidate != "" {
+			selectedCandidates = append(selectedCandidates, bestCandidate)
+			remainingHand = append(remainingHand[:bestCandidateIndex], remainingHand[bestCandidateIndex+1:]...)
+		} else {
+			return nil
 		}
 	}
 
-	if len(strongerCards) == 0 {
-		return nil
+	if len(selectedCandidates) == len(request.Selected) {
+		return selectedCandidates
 	}
+	return nil
+}
 
-	return strongerCards
+func RemoveCards(cardsToRemove []string, hand []string) []string {
+	remaining := make([]string, len(hand))
+	copy(remaining, hand)
+	for _, card := range cardsToRemove {
+		for i, hcard := range remaining {
+			if card == hcard {
+				remaining = append(remaining[:i], remaining[i+1:]...)
+				break
+			}
+		}
+	}
+	return remaining
 }
 
 func FindRank(Rank string) int {
-
 	switch Rank {
 	case "Ace":
 		return 10
@@ -94,30 +130,4 @@ func FindRank(Rank string) int {
 	default:
 		return 0
 	}
-
-}
-func ThrowCards(cardsToThrow, hand []string) []string {
-	if len(cardsToThrow) == 0 {
-		return hand
-	}
-
-	weakestCard := cardsToThrow[0]
-	weakestRank := FindRank(strings.Split(weakestCard, " ")[0])
-	for _, card := range cardsToThrow {
-		rank := FindRank(strings.Split(card, " ")[0])
-		if rank < weakestRank {
-			weakestRank = rank
-			weakestCard = card
-		}
-	}
-
-	for i, card := range hand {
-		if card == weakestCard {
-			newHand := append([]string{}, hand[:i]...)
-			newHand = append(newHand, hand[i+1:]...)
-			return newHand
-		}
-	}
-
-	return hand
 }

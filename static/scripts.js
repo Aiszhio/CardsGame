@@ -2,19 +2,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const createDeckBtn = document.getElementById("create-deck");
     const saveDeckBtn = document.getElementById("save-deck");
     const loadDeckBtn = document.getElementById("load-deck");
-    const drawCardBtn = document.getElementById("draw-card");
-    const discardCardBtn = document.getElementById("discard-card");
+    const drawCardBtn = document.getElementById("draw-card"); // кнопка для выбрасывания карт
     const toggleAICardsBtn = document.getElementById("toggle-ai-cards");
 
     const tableList = document.getElementById("table-list");
     const handList = document.getElementById("hand-list");
     const aiHandList = document.getElementById("ai-hand-list");
+    const gamingTableList = document.getElementById("gaming-table-list");
 
     const sessionId = Date.now();
 
     let socket;
     let aiCardsRevealed = false;
     let cachedAIDeck = null;
+    let gamingTableCards = [];
 
     function initWebSocket() {
         const protocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -23,6 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
         socket = new WebSocket(socketUrl);
 
         socket.onopen = () => {
+            console.log("WebSocket подключён");
         };
 
         socket.onmessage = (event) => {
@@ -31,6 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (data.queue) updateTableUI(data.queue);
                 if (data.deck) updateHandUI(data.deck);
                 if (data.deckAI) {
+                    console.log("Received AI deck:", data.deckAI);
                     cachedAIDeck = data.deckAI;
                     updateAIDeckUI(cachedAIDeck);
                 }
@@ -40,6 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         socket.onclose = () => {
+            console.log("WebSocket закрыт");
         };
 
         socket.onerror = (error) => {
@@ -48,6 +52,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     initWebSocket();
+
+    function updateGamingTableUI(cards) {
+        gamingTableList.innerHTML = "";
+        cards.forEach((card) => {
+            let rank, suit;
+            if (typeof card === "string") {
+                const parts = card.split(" of ");
+                rank = parts[0] ? parts[0].trim() : "";
+                suit = parts[1] ? parts[1].trim() : "";
+            } else {
+                rank = card.Rank;
+                suit = card.Suit;
+            }
+            if (!rank || !suit) return;
+            const li = document.createElement("li");
+            li.dataset.card = `${rank} of ${suit}`;
+            const fileName = `${rank} of ${suit}.png`;
+            const img = document.createElement("img");
+            img.src = `./static/images/${fileName}`;
+            img.alt = `${rank} of ${suit}`;
+            img.classList.add("card-image");
+            li.appendChild(img);
+            gamingTableList.appendChild(li);
+        });
+    }
 
     function updateTableUI(cards) {
         tableList.innerHTML = "";
@@ -142,63 +171,81 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     createDeckBtn.addEventListener("click", async () => {
-        try {
-            const response = await fetch("/api/deck/create", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Session-ID": sessionId,
-                },
-            });
-            if (!response.ok) {
-                throw new Error(`Ошибка сервера: ${response.status}`);
-            }
-            const data = await response.json();
-            // Обновляем руку игрока, руку ИИ и стол
-            updateHandUI(data.deck || []);
-            updateAIDeckUI(data.deckAI);
-            updateTableUI(data.queue || []);
-            cachedAIDeck = data.deckAI;
-        } catch (error) {
-            console.error(error);
+        const response = await fetch("/api/deck/create", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Session-ID": sessionId,
+            },
+        });
+        const data = await response.json();
+        if (data.error) {
+            alert(data.error);
+            return;
         }
+        // Очищаем игровое поле выброшенных карт при начале игры
+        gamingTableCards = [];
+        updateGamingTableUI(gamingTableCards);
+        updateHandUI(data.deck || []);
+        updateAIDeckUI(data.deckAI);
+        updateTableUI(data.queue || []);
+        cachedAIDeck = data.deckAI;
     });
 
-    saveDeckBtn.addEventListener("click", () => {
-        let content = "Стол:\n";
-        tableList.querySelectorAll("li").forEach((li) => {
-            content += li.textContent + "\n";
-        });
-        content += "\nВаша Рука:\n";
-        handList.querySelectorAll("li").forEach((li) => {
+    saveDeckBtn.addEventListener("click", async () => {
+        const handCards = Array.from(handList.querySelectorAll("li")).map(li => {
             const img = li.querySelector("img");
-            content += img ? img.alt : li.textContent;
-            content += "\n";
+            return img ? img.alt : li.textContent;
         });
-        const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
+        const tableCards = Array.from(tableList.querySelectorAll("li")).map(li => li.textContent);
+        const aiCards = Array.from(document.querySelectorAll("#ai-hand-list li")).map(li =>
+            li.dataset.card || (li.querySelector("img") ? li.querySelector("img").alt : li.textContent)
+        );
+
+        const payload = {
+            handCards: handCards,
+            aiCards: aiCards,
+            tableCards: tableCards
+        };
+        console.log("Отправляем данные для сохранения:", payload);
+
+        const response = await fetch("/api/deck/save", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Session-ID": sessionId,
+            },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        console.log("Получен URL для скачивания:", data.downloadUrl);
+
         const a = document.createElement("a");
-        a.href = url;
-        a.download = "deck.txt";
+        a.href = data.downloadUrl;
+        a.download = data.downloadUrl.split("/").pop();
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
     });
 
-    loadDeckBtn.addEventListener("change", (event) => {
+    loadDeckBtn.addEventListener("change", async (event) => {
         const file = event.target.files[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            const content = e.target.result;
-            const [tableContent, handContent] = content.split("\n\n");
-            const tableCards = tableContent.split("\n").slice(1).map(card => card.trim()).filter(card => card);
-            updateTableUI(tableCards);
-            const handCards = handContent.split("\n").slice(1).map(card => card.trim()).filter(card => card);
-            updateHandUI(handCards);
-        };
-        reader.readAsText(file);
+        const response = await fetch(`/api/deck/load?filename=${encodeURIComponent(file.name)}`, {
+            method: "GET"
+        });
+        const data = await response.json();
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        updateTableUI(data.tableCards || []);
+        updateHandUI(data.handCards || []);
+        updateAIDeckUI(data.aiCards || []);
     });
 
     function getAICardNames() {
@@ -213,6 +260,42 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         return card;
     }
+
+    async function checkStatus() {
+        const handCards = Array.from(handList.querySelectorAll("li")).map(li => {
+            const img = li.querySelector("img");
+            return img ? img.alt : li.textContent;
+        });
+        const tableCards = Array.from(tableList.querySelectorAll("li")).map(li => li.textContent);
+        const aiCards = getAICardNames();
+
+        const statusPayload = {
+            hand: handCards,
+            deckAI: aiCards,
+            table: tableCards
+        };
+        console.log("Отправляем данные на /api/deck/status:", statusPayload);
+
+        const statusResponse = await fetch("/api/deck/status", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Session-ID": sessionId,
+            },
+            body: JSON.stringify(statusPayload)
+        });
+        const statusData = await statusResponse.json();
+        console.log("Получен ответ от /api/deck/status:", statusData);
+
+        if (statusData.error) {
+            alert(statusData.error);
+            return;
+        }
+        updateHandUI(statusData.handCards);
+        updateAIDeckUI(statusData.aiCards);
+        updateTableUI(statusData.tableCards);
+    }
+
 
     drawCardBtn.addEventListener("click", async () => {
         const handCards = Array.from(handList.querySelectorAll("li")).map(li => {
@@ -230,90 +313,95 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        try {
-            const leaveResponse = await fetch("/api/deck/leave", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Session-ID": sessionId,
-                },
-                body: JSON.stringify({
-                    hand: handCards,
-                    table: tableCards,
-                    selected: selectedCards,
-                })
-            });
-
-            if (!leaveResponse.ok) {
-                throw new Error(`Ошибка выбрасывания карт: ${leaveResponse.status}`);
-            }
-
-            const leaveData = await leaveResponse.json();
-
-            updateHandUI(leaveData.deck || []);
-            updateTableUI(leaveData.queue || []);
-            if (leaveData.deckAI) updateAIDeckUI(leaveData.deckAI);
-
-            const aiResponse = await fetch("/api/deck/ai", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Session-ID": sessionId,
-                },
-                body: JSON.stringify({
-                    selected: selectedCards,
-                    handAI: getAICardNames()
-                })
-            });
-
-            if (!aiResponse.ok) {
-                throw new Error(`Ошибка ИИ: ${aiResponse.status}`);
-            }
-
-            const aiData = await aiResponse.json();
-            if (aiData.data) {
-                if (aiData.data.handAI) {
-                    updateAIDeckUI(aiData.data.handAI);
-                    cachedAIDeck = aiData.data.handAI;
-                }
-                if (aiData.data.queue) {
-                    updateTableUI(aiData.data.queue);
-                }
-            }
-        } catch (error) {
-            console.error("Ошибка при выбрасывании карт или запросе ИИ:", error);
-            alert("Произошла ошибка, попробуйте снова.");
-        }
-    });
-
-    discardCardBtn.addEventListener("click", async () => {
-        const handCards = Array.from(handList.querySelectorAll("li")).map(li => {
-            const img = li.querySelector("img");
-            return img ? img.alt : li.textContent;
+        // Проверяем, что все выбранные карты имеют одинаковый ранг.
+        const ranks = selectedCards.map(card => {
+            const parts = card.split(" of ");
+            return parts[0] ? parts[0].trim() : "";
         });
-        const tableCards = Array.from(tableList.querySelectorAll("li")).map(li => li.textContent);
-        try {
-            const response = await fetch("/api/deck/take", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Session-ID": sessionId,
-                },
-                body: JSON.stringify({
-                    hand: handCards,
-                    table: tableCards
-                })
-            });
-            if (!response.ok) {
-                throw new Error(`Ошибка сервера: ${response.status}`);
-            }
-            const data = await response.json();
-            updateHandUI(data.deck || []);
-            updateTableUI(data.queue || []);
-            if (data.deckAI) updateAIDeckUI(data.deckAI);
-        } catch (error) {
-            console.error("Ошибка при взятии карт:", error);
-            alert("Произошла ошибка при взятии карты, попробуйте снова.");
+        const firstRank = ranks[0];
+        const allSame = ranks.every(rank => rank === firstRank);
+        if (!allSame) {
+            alert("Выбранные карты должны быть одной величины!");
+            return;
         }
+
+        // Если проверка пройдена, добавляем карту(ы) в область "выброшенные карты"
+        selectedCards.forEach(card => {
+            gamingTableCards.push(card);
+        });
+        updateGamingTableUI(gamingTableCards);
+
+        console.log("Отправляем данные на /api/deck/leave:", {
+            hand: handCards,
+            table: tableCards,
+            selected: selectedCards
+        });
+
+        const leaveResponse = await fetch("/api/deck/leave", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Session-ID": sessionId,
+            },
+            body: JSON.stringify({
+                hand: handCards,
+                table: tableCards,
+                selected: selectedCards,
+            })
+        });
+        const leaveData = await leaveResponse.json();
+        console.log("Ответ от /api/deck/leave:", leaveData);
+        if (leaveData.error) {
+            alert(leaveData.error);
+            return;
+        }
+        updateHandUI(leaveData.deck || []);
+        updateTableUI(leaveData.queue || []);
+
+        console.log("Отправляем данные на /api/deck/ai:", {
+            selected: selectedCards,
+            handAI: getAICardNames()
+        });
+
+        const aiResponse = await fetch("/api/deck/ai", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Session-ID": sessionId,
+            },
+            body: JSON.stringify({
+                selected: selectedCards,
+                handAI: getAICardNames()
+            })
+        });
+        const aiData = await aiResponse.json();
+        console.log("Ответ от /api/deck/ai:", aiData);
+        if (aiData.error) {
+            alert(aiData.error);
+            return;
+        }
+        if (aiData.data) {
+            if (aiData.data.handAI) {
+                updateAIDeckUI(aiData.data.handAI);
+                cachedAIDeck = aiData.data.handAI;
+            }
+            if (aiData.data.selectedAI && aiData.data.selectedAI.length > 0) {
+                aiData.data.selectedAI.forEach(card => {
+                    gamingTableCards.push(card);
+                });
+                updateGamingTableUI(gamingTableCards);
+            }
+            if (aiData.data.queue) {
+                updateTableUI(aiData.data.queue);
+            }
+            console.log("Selected AI:", aiData.data.selectedAI);
+        }
+        if (gamingTableCards.length >= 2) {
+            setTimeout(() => {
+                gamingTableCards = [];
+                updateGamingTableUI(gamingTableCards);
+            }, 4000);
+        }
+        await checkStatus();
     });
 });

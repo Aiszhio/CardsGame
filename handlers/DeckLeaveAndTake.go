@@ -70,6 +70,13 @@ func LeaveCards(c *gin.Context) {
 	}
 	resp.Deck = remainingCards
 
+	if len(resp.Deck) == 0 {
+		push(c.GetHeader("X-Session-ID"), gin.H{
+			"type":   "gameOver",
+			"winner": "player",
+		})
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"deck":        resp.Deck,
 		"gamingTable": resp.GamingTable,

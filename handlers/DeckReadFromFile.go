@@ -15,7 +15,6 @@ func NewDeckFromFile(filename string) (handCards []Card, aiCards []Card, tableCa
 		return nil, nil, nil, err
 	}
 
-	// Разбиваем содержимое файла на строки и удаляем лишние пробелы
 	lines := strings.Split(string(bs), "\n")
 	var nonEmpty []string
 	for _, line := range lines {
@@ -25,11 +24,6 @@ func NewDeckFromFile(filename string) (handCards []Card, aiCards []Card, tableCa
 		}
 	}
 
-	// Ожидаемые заголовки
-	// "Стол" – раздел для карт стола
-	// "Выброшенные карты" – можно игнорировать (или использовать, если нужно)
-	// "Ваша Рука" – раздел для руки пользователя
-	// "Рука ИИ" – раздел для руки ИИ
 	var currentSection string
 	for _, line := range nonEmpty {
 		switch line {
@@ -37,15 +31,13 @@ func NewDeckFromFile(filename string) (handCards []Card, aiCards []Card, tableCa
 			currentSection = line
 			continue
 		}
-		// Если строка не является заголовком, пытаемся её распарсить как карту.
-		// Например, строка может быть вида "1. Ace of Diamonds" или просто "Ace of Diamonds".
 		cardStr := line
 		if dotIndex := strings.Index(cardStr, "."); dotIndex != -1 {
 			cardStr = strings.TrimSpace(cardStr[dotIndex+1:])
 		}
 		parts := strings.Split(cardStr, " of ")
 		if len(parts) != 2 {
-			continue // пропускаем некорректные строки
+			continue
 		}
 		card := Card{
 			Rank: parts[0],
@@ -58,15 +50,12 @@ func NewDeckFromFile(filename string) (handCards []Card, aiCards []Card, tableCa
 			handCards = append(handCards, card)
 		case "Рука ИИ":
 			aiCards = append(aiCards, card)
-			// В разделе "Выброшенные карты" мы пока игнорируем данные.
 		}
 	}
 
 	return handCards, aiCards, tableCards, nil
 }
 
-// LoadDeckFromFileHandler обрабатывает GET-запрос с параметром "filename"
-// и возвращает JSON с сохранённым состоянием игры.
 func LoadDeckFromFileHandler(c *gin.Context) {
 	filename := c.Query("filename")
 	if filename == "" {

@@ -29,6 +29,7 @@ func main() {
 		router.POST("/api/deck/status", handlers.WatchStatus)
 		router.POST("/api/deck/save", handlers.SaveGameState)
 		router.GET("/api/deck/load", handlers.LoadDeckFromFileHandler)
+		router.POST("/api/deck/resume", handlers.ResumeGame)
 	}
 
 	err := router.Run(":8080")

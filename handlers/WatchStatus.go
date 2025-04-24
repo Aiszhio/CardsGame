@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -14,28 +13,36 @@ type ClientData struct {
 
 func WatchStatus(c *gin.Context) {
 	var data ClientData
-	err := c.ShouldBindJSON(&data)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error from server": err.Error()})
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
-
-	fmt.Println("data", data)
 
 	prepareToFill := Status(data.UserHand, data.AIHand)
 
 	var User, AI []string
-
-	for idx, value := range prepareToFill {
-		if idx == 0 && value == false {
+	for idx, ok := range prepareToFill {
+		if idx == 0 && !ok {
 			User = FillHand(data.UserHand, &data.Table)
-		} else if idx == 1 && value == false {
+		} else if idx == 1 && !ok {
 			AI = FillHand(data.AIHand, &data.Table)
 		}
 	}
 
-	fmt.Println(User, AI)
+	resp := gin.H{
+		"handCards":  User,
+		"aiCards":    AI,
+		"tableCards": data.Table,
+	}
+	c.JSON(http.StatusOK, resp)
 
-	c.JSON(http.StatusOK, gin.H{"handCards": User, "aiCards": AI, "tableCards": data.Table})
+	sid := c.GetHeader("X-Session-ID")
+	if len(data.UserHand) == 0 && len(data.Table) == 0 {
+		push(sid, gin.H{"type": "gameOver", "winner": "player"})
+	}
+	if len(data.AIHand) == 0 && len(data.Table) == 0 {
+		push(sid, gin.H{"type": "gameOver", "winner": "ai"})
+	}
 }
 
 func Status(UserHand, AIHand []string) []bool {

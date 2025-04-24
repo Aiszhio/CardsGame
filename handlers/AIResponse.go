@@ -41,6 +41,13 @@ func AIResponse(c *gin.Context) {
 		}
 	}
 
+	if len(resp.HandAI) == 0 {
+		push(c.GetHeader("X-Session-ID"), gin.H{
+			"type":   "gameOver",
+			"winner": "ai",
+		})
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": resp})
 }
 
